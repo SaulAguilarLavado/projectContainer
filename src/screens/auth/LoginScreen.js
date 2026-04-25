@@ -21,7 +21,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>TextilSmart Login</Text>
+      <Text style={styles.title}>TextilControl Login</Text>
 
       <TextInput 
         placeholder="Nombre de usuario" 
