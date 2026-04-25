@@ -32,14 +32,52 @@ export default function CatalogScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 15 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { width: '48%', backgroundColor: '#FFF', padding: 10, borderRadius: 10, marginBottom: 15, elevation: 3 },
-  imgPlaceholder: { height: 100, backgroundColor: '#DDD', borderRadius: 8, marginBottom: 5 },
-  prodName: { fontWeight: 'bold' },
-  prodPrice: { color: Colour.primary },
-  stock: { fontSize: 12 },
-  btnEnd: { marginVertical: 30, padding: 15, backgroundColor: Colour.text, borderRadius: 10 },
-  btnEndText: { color: '#FFF', textAlign: 'center' }
+  container: {
+    flex: 1,
+    padding: 15
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center'
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between'
+  },
+  card: {
+    width: '48%',
+    backgroundColor: '#FFF',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 15,
+    elevation: 3
+  },
+  imgPlaceholder: {
+    height: 100,
+    backgroundColor: '#DDD',
+    borderRadius: 8,
+    marginBottom: 5
+  },
+  prodName: {
+    fontWeight: 'bold'
+  },
+  prodPrice: {
+    color: Colour.primary
+  },
+  stock: {
+    fontSize: 12
+  },
+  btnEnd: {
+    marginVertical: 30,
+    padding: 15,
+    backgroundColor: Colour.text,
+    borderRadius: 10
+  },
+  btnEndText: {
+    color: '#FFF',
+    textAlign: 'center'
+  }
 });

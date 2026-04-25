@@ -12,7 +12,7 @@ export default function AdminHomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Trabajos del Día</Text>
-      
+
       <FlatList
         data={pendingRepairs}
         keyExtractor={item => item.id}
@@ -27,15 +27,15 @@ export default function AdminHomeScreen({ navigation }) {
         )}
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.btnAdd}
         onPress={() => navigation.navigate('NuevaReparacion')}
       >
         <Text style={styles.btnText}>+ Nueva Reparación</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.btnNext} 
+      <TouchableOpacity
+        style={styles.btnNext}
         onPress={() => navigation.navigate('NuevaReparacion')}
       >
         <Text style={styles.btnNextText}>Siguiente: Registrar Prenda →</Text>
@@ -45,13 +45,55 @@ export default function AdminHomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: Colour.background },
-  title: { fontSize: 22, fontWeight: 'bold', color: Colour.primary, marginBottom: 20 },
-  card: { backgroundColor: '#FFF', padding: 15, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, elevation: 2 },
-  clientName: { fontWeight: 'bold', fontSize: 16 },
-  status: { color: Colour.secondary, fontWeight: 'bold' },
-  btnAdd: { backgroundColor: Colour.primary, padding: 15, borderRadius: 10, marginTop: 10 },
-  btnText: { color: '#FFF', textAlign: 'center', fontWeight: 'bold' },
-  btnNext: { marginTop: 20, padding: 10, borderStyle: 'dashed', borderWidth: 1, borderColor: Colour.text },
-  btnNextText: { textAlign: 'center', color: Colour.text }
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: Colour.background
+
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colour.primary,
+    marginBottom: 20
+
+  },
+  card: {
+    backgroundColor: '#FFF',
+    padding: 15, borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    elevation: 2
+  },
+  clientName: {
+    fontWeight: 'bold',
+    fontSize: 16
+  },
+  status: {
+    color: Colour.secondary,
+    fontWeight: 'bold'
+  },
+  btnAdd: {
+    backgroundColor: Colour.primary,
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 10
+  },
+  btnText: {
+    color: '#FFF',
+    textAlign: 'center',
+    fontWeight: 'bold'
+  },
+  btnNext: {
+    marginTop: 20,
+    padding: 10,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: Colour.text
+  },
+  btnNextText: {
+    textAlign: 'center',
+    color: Colour.text
+  }
 });

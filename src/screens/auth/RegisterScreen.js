@@ -35,12 +35,42 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: Colour.background },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
-  input: { backgroundColor: Colour.white, padding: 12, borderRadius: 8, marginBottom: 10 },
-  errorText: { color: Colour.error, marginBottom: 10, fontSize: 12 },
-  btnMain: { backgroundColor: Colour.primary, padding: 15, borderRadius: 10, alignItems: 'center' },
-  btnText: { color: Colour.white },
-  btnNext: { marginTop: 20, alignSelf: 'center' },
-  btnNextText: { color: Colour.primary, fontWeight: '600' }
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: Colour.background
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 20
+  },
+  input: {
+    backgroundColor: Colour.white,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10
+  },
+  errorText: {
+    color: Colour.error,
+    marginBottom: 10,
+    fontSize: 12
+  },
+  btnMain: {
+    backgroundColor: Colour.primary,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  btnText: {
+    color: Colour.white
+  },
+  btnNext: {
+    marginTop: 20,
+    alignSelf: 'center'
+  },
+  btnNextText: {
+    color: Colour.primary,
+    fontWeight: '600'
+  }
 });
