@@ -54,7 +54,9 @@ src/
 ├── navigation/   # AppNavigator
 ├── constants/    # Configuración de estilos (Colour.js)
 └── utils/        # Funciones de validación
+```
 
+---
 
 ## ⚙️ Instalación y Uso
 
@@ -64,9 +66,13 @@ Para poner en marcha el proyecto, asegúrese de contar con **Node.js** y el **CL
 Instale los paquetes necesarios ejecutando el siguiente comando en su terminal:
 ```bash
 npm install
+```
 
 ### 🛠️ Inicie el servidor de desarrollo:
 ```bash
 npx expo start
+```
 
 Escanee el código QR con la aplicación Expo Go para previsualizar en un dispositivo real.
+
+---
