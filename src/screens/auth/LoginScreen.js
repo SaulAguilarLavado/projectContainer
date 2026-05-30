@@ -46,8 +46,12 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // Llamar al endpoint de login del backend
-      const response = await loginUsuario(username, password);
+      // Obtener usuarios registrados temporalmente
+      const registeredUsersJson = await AsyncStorage.getItem('registeredUsers');
+      const registeredUsers = registeredUsersJson ? JSON.parse(registeredUsersJson) : [];
+
+      // Llamar función de login con usuarios registrados
+      const response = await loginUsuario(username, password, registeredUsers);
 
       // Guardar datos del usuario en AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(response.usuario));
@@ -129,9 +133,20 @@ export default function LoginScreen({ navigation }) {
         />
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>👤 Usuarios de Prueba</Text>
-          <Text style={styles.infoText}>Admin: admin / admin123</Text>
-          <Text style={styles.infoText}>Cliente: cliente1 / cliente123</Text>
+          <Text style={styles.infoTitle}>👤 Credenciales de Prueba</Text>
+          <View style={styles.credentialRow}>
+            <Text style={styles.credentialLabel}>Admin:</Text>
+            <Text style={styles.credentialValue}>admin</Text>
+            <Text style={styles.credentialSeparator}>/</Text>
+            <Text style={styles.credentialValue}>admin123</Text>
+          </View>
+          <View style={styles.credentialRow}>
+            <Text style={styles.credentialLabel}>Cliente:</Text>
+            <Text style={styles.credentialValue}>cliente1</Text>
+            <Text style={styles.credentialSeparator}>/</Text>
+            <Text style={styles.credentialValue}>cliente123</Text>
+          </View>
+          <Text style={styles.infoHint}>O usa tu cuenta registrada</Text>
         </View>
       </View>
     </ScrollView>
@@ -179,12 +194,39 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontWeight: 'bold',
     color: Colour.primary,
-    marginBottom: 8,
+    marginBottom: 10,
     fontSize: 14
   },
-  infoText: {
-    color: Colour.text,
+  credentialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    backgroundColor: '#F9F9F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6
+  },
+  credentialLabel: {
     fontSize: 12,
-    marginBottom: 4
+    color: '#666',
+    fontWeight: '600',
+    marginRight: 8
+  },
+  credentialValue: {
+    fontSize: 11,
+    color: Colour.primary,
+    fontFamily: 'monospace',
+    fontWeight: 'bold'
+  },
+  credentialSeparator: {
+    fontSize: 11,
+    color: '#AAA',
+    marginHorizontal: 6
+  },
+  infoHint: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 8,
+    fontStyle: 'italic'
   }
 });

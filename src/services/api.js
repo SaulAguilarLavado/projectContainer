@@ -16,30 +16,62 @@ export const API_ENDPOINTS = {
 
 /**
  * Login de usuario
+ * Soporta: usuarios de prueba predefinidos + usuarios registrados temporalmente
  * @param {string} username - Nombre de usuario
  * @param {string} password - Contraseña
+ * @param {array} registeredUsers - Lista de usuarios registrados temporalmente
  * @returns {Promise} Respuesta con datos del usuario
  */
-export const loginUsuario = async (username, password) => {
+export const loginUsuario = async (username, password, registeredUsers = []) => {
   try {
-    const response = await fetch(API_ENDPOINTS.LOGIN, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
+    // Usuarios de prueba predefinidos
+    const testUsers = [
+      {
+        id: '1',
+        username: 'admin',
+        password: 'admin123',
+        name: 'Administrador',
+        email: 'admin@textilcontrol.com',
+        role: 'admin'
       },
-      body: JSON.stringify({
-        username,
-        password
-      })
-    });
+      {
+        id: '2',
+        username: 'cliente1',
+        password: 'cliente123',
+        name: 'Cliente Demo',
+        email: 'cliente@textilcontrol.com',
+        role: 'customer'
+      }
+    ];
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Error en el login');
+    // Buscar en usuarios de prueba
+    let foundUser = testUsers.find(
+      u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
+    );
+
+    // Si no encuentra en prueba, buscar en usuarios registrados temporalmente
+    if (!foundUser && registeredUsers && registeredUsers.length > 0) {
+      foundUser = registeredUsers.find(
+        u => u.email.toLowerCase() === username.toLowerCase() && u.password === password
+      );
     }
 
-    const data = await response.json();
-    return data;
+    // Si no encuentra el usuario, lanzar error
+    if (!foundUser) {
+      throw new Error('Usuario o contraseña incorrectos');
+    }
+
+    // Retornar usuario encontrado
+    return {
+      usuario: {
+        id: foundUser.id,
+        name: foundUser.name || foundUser.email,
+        email: foundUser.email,
+        role: foundUser.role || 'customer',
+        username: foundUser.username || foundUser.email
+      },
+      token: `token_${foundUser.id}_${Date.now()}`
+    };
   } catch (error) {
     console.error('Error en loginUsuario:', error);
     throw error;
