@@ -57,12 +57,12 @@ export default function LoginScreen({ navigation }) {
       if (response.usuario.role === 'admin') {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'PanelCosturera' }]
+          routes: [{ name: 'AdminApp' }]
         });
       } else {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'EstadoCliente' }]
+          routes: [{ name: 'CustomerApp' }]
         });
       }
 

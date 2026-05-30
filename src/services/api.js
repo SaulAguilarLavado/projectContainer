@@ -96,6 +96,49 @@ export const getProducts = async () => {
 };
 
 /**
+ * Registrar usuario temporalmente (en memoria/AsyncStorage)
+ * @param {object} userData - {name, email, password}
+ * @returns {Promise} Usuario creado
+ */
+export const registerUsuario = async (userData) => {
+  try {
+    const newUser = {
+      id: Date.now().toString(),
+      name: userData.name,
+      email: userData.email.toLowerCase(),
+      password: userData.password,
+      role: 'customer',
+      created_at: new Date().toISOString()
+    };
+
+    // Aquí se guarda temporalmente (en una app real iría al backend)
+    // Por ahora lo retornamos para que se guarde en AsyncStorage
+    return newUser;
+  } catch (error) {
+    console.error('Error en registerUsuario:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener lista de usuarios registrados (temporales)
+ * @returns {Promise} Lista de usuarios
+ */
+export const getUsuarios = async () => {
+  try {
+    // Retorna usuarios de ejemplo
+    return [
+      { id: '1', name: 'Juan Pérez', email: 'juan@ejemplo.com', role: 'customer' },
+      { id: '2', name: 'María García', email: 'maria@ejemplo.com', role: 'customer' },
+      { id: '3', name: 'Carlos López', email: 'carlos@ejemplo.com', role: 'customer' }
+    ];
+  } catch (error) {
+    console.error('Error en getUsuarios:', error);
+    throw error;
+  }
+};
+
+/**
  * Verificar estado de la API
  */
 export const checkHealth = async () => {

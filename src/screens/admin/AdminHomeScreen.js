@@ -104,13 +104,6 @@ export default function AdminHomeScreen({ navigation }) {
         variant="primary"
         style={styles.btnAdd}
       />
-
-      <CustomButton
-        title="Siguiente: Registrar Prenda →"
-        onPress={() => navigation.navigate('NuevaReparacion')}
-        variant="secondary"
-        style={styles.btnNext}
-      />
     </ScrollView>
   );
 }

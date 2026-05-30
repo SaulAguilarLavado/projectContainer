@@ -24,6 +24,7 @@ export default function CustomInput({
         keyboardType={keyboardType}
         editable={editable}
         placeholderTextColor="#999"
+        autoCapitalize="none"
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>

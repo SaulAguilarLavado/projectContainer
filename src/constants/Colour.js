@@ -5,5 +5,6 @@ export default {
   text: '#333',
   error: '#FF0000',
   white: '#FFF',
-  success: '#4CAF50'
+  success: '#4CAF50',
+  warning: '#FFA500'
 };

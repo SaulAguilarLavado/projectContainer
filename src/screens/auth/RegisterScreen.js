@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colour from '../../constants/Colour';
+import { registerUsuario } from '../../services/api';
 
 export default function RegisterScreen({ navigation }) {
   // Estados para los campos
@@ -11,7 +13,7 @@ export default function RegisterScreen({ navigation }) {
   // Estados para los mensajes de error (Excepciones)
   const [errors, setErrors] = useState({});
 
-  const validateForm = () => {
+  const validateForm = async () => {
     let tempErrors = {};
     
     // 1. Excepción: Campo de nombre vacío
@@ -28,73 +30,122 @@ export default function RegisterScreen({ navigation }) {
 
     // Si no hay errores (el objeto está vacío), procedemos
     if (Object.keys(tempErrors).length === 0) {
-      Alert.alert("Éxito", "Usuario registrado correctamente");
-      navigation.navigate('PanelCosturera');
+      try {
+        // Registrar usuario
+        const newUser = await registerUsuario({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password
+        });
+
+        // Guardar usuario temporalmente en AsyncStorage
+        await AsyncStorage.setItem('tempUser', JSON.stringify(newUser));
+        
+        // Guardar en lista de usuarios temporales
+        const existingUsers = await AsyncStorage.getItem('registeredUsers');
+        const usersList = existingUsers ? JSON.parse(existingUsers) : [];
+        usersList.push(newUser);
+        await AsyncStorage.setItem('registeredUsers', JSON.stringify(usersList));
+
+        Alert.alert("Éxito", "Usuario registrado correctamente");
+        
+        // Limpiar campos
+        setName('');
+        setEmail('');
+        setPassword('');
+        setErrors({});
+        
+        // Navegar a login
+        navigation.navigate('Login');
+      } catch (err) {
+        Alert.alert("Error", "No se pudo registrar el usuario");
+        console.error('Error registrando:', err);
+      }
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Registro de Cliente</Text>
+    <ScrollView style={styles.container} contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={styles.innerContainer}>
+        <Text style={styles.title}>📝 Crear Cuenta</Text>
+        <Text style={styles.subtitle}>Regístrate para usar la aplicación</Text>
 
-      {/* Input Nombre */}
-      <Text style={styles.label}>Nombre Completo:</Text>
-      <TextInput 
-        style={[styles.input, errors.name && styles.inputError]} 
-        onChangeText={setName}
-        placeholder="Ej: Juan Perez"
-      />
-      {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+        {/* Input Nombre */}
+        <Text style={styles.label}>Nombre Completo:</Text>
+        <TextInput 
+          style={[styles.input, errors.name && styles.inputError]} 
+          onChangeText={setName}
+          value={name}
+          placeholder="Ej: Juan Perez"
+          autoCapitalize="words"
+        />
+        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
-      {/* Input Email */}
-      <Text style={styles.label}>Correo Electrónico:</Text>
-      <TextInput 
-        style={[styles.input, errors.email && styles.inputError]} 
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        placeholder="usuario@correo.com"
-      />
-      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+        {/* Input Email */}
+        <Text style={styles.label}>Correo Electrónico:</Text>
+        <TextInput 
+          style={[styles.input, errors.email && styles.inputError]} 
+          onChangeText={setEmail}
+          value={email}
+          keyboardType="email-address"
+          placeholder="usuario@correo.com"
+          autoCapitalize="none"
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-      {/* Input Password */}
-      <Text style={styles.label}>Contraseña:</Text>
-      <TextInput 
-        style={[styles.input, errors.password && styles.inputError]} 
-        secureTextEntry 
-        onChangeText={setPassword}
-        placeholder="Mínimo 6 caracteres"
-      />
-      {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+        {/* Input Password */}
+        <Text style={styles.label}>Contraseña:</Text>
+        <TextInput 
+          style={[styles.input, errors.password && styles.inputError]} 
+          secureTextEntry 
+          onChangeText={setPassword}
+          value={password}
+          placeholder="Mínimo 6 caracteres"
+          autoCapitalize="none"
+        />
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-      <TouchableOpacity style={styles.btnMain} onPress={validateForm}>
-        <Text style={styles.btnText}>Crear Cuenta</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.btnMain} onPress={validateForm}>
+          <Text style={styles.btnText}>Crear Cuenta</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('PanelCosturera')} style={styles.btnNext}>
-        <Text style={styles.btnNextText}>Omitir para Demo (Siguiente) →</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.btnSecondary}>
+          <Text style={styles.btnSecondaryText}>¿Ya tienes cuenta? Inicia sesión</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colour.background
+  },
+  innerContainer: {
+    flex: 1,
     padding: 20,
-    backgroundColor: Colour.background,
     justifyContent: 'center'
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: Colour.primary,
-    marginBottom: 20,
+    marginBottom: 5,
     textAlign: 'center'
+  },
+  subtitle: {
+    fontSize: 14,
+    color: Colour.text,
+    textAlign: 'center',
+    marginBottom: 30,
+    opacity: 0.7
   },
   label: {
     fontWeight: 'bold',
     marginBottom: 5,
-    color: Colour.text
+    color: Colour.text,
+    fontSize: 14
   },
   input: {
     backgroundColor: '#FFF',
@@ -102,10 +153,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 5,
     borderWidth: 1,
-    borderColor: '#DDD'
+    borderColor: '#DDD',
+    color: Colour.text,
+    fontSize: 14
   },
   inputError: {
-    borderColor: Colour.error
+    borderColor: Colour.error,
+    borderWidth: 2
   },
   errorText: {
     color: Colour.error,
@@ -117,17 +171,20 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10
+    marginTop: 20
   },
   btnText: {
     color: '#FFF',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 16
   },
-  btnNext: {
-    marginTop: 20,
-    alignSelf: 'center'
+  btnSecondary: {
+    marginTop: 15,
+    padding: 12,
+    alignItems: 'center'
   },
-  btnNextText: {
-    color: '#666'
+  btnSecondaryText: {
+    color: Colour.secondary,
+    fontWeight: '600'
   }
 });
