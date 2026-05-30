@@ -1,46 +1,117 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colour from '../../constants/Colour';
+import { getRepairs } from '../../services/api';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import RepairCard from '../../components/RepairCard';
+import CustomButton from '../../components/CustomButton';
 
-// Datos de prueba estáticos
-const pendingRepairs = [
-  { id: '1', client: 'Juan Pérez', item: 'Saco Azul', status: 'Pendiente', date: '15/10' },
-  { id: '2', client: 'Maria Luz', item: 'Vestido Gala', status: 'En Proceso', date: '16/10' },
-];
-
+/**
+ * AdminHomeScreen: Pantalla del administrador que muestra trabajos del día
+ * - Consume API con useFetch + AsyncStorage
+ * - Maneja estados de carga, error y datos
+ * - Usa componentes reutilizables RepairCard y CustomButton
+ */
 export default function AdminHomeScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Trabajos del Día</Text>
+  const [repairs, setRepairs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-      <FlatList
-        data={pendingRepairs}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View>
-              <Text style={styles.clientName}>{item.client}</Text>
-              <Text>{item.item}</Text>
+  useEffect(() => {
+    loadRepairs();
+  }, []);
+
+  const loadRepairs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Intentar cargar del caché local primero (AsyncStorage)
+      const cachedRepairs = await AsyncStorage.getItem('admin_repairs');
+      if (cachedRepairs) {
+        setRepairs(JSON.parse(cachedRepairs));
+      }
+
+      // Luego intentar obtener datos frescos de la API
+      const freshRepairs = await getRepairs();
+      setRepairs(freshRepairs);
+
+      // Guardar en AsyncStorage para uso posterior offline
+      await AsyncStorage.setItem('admin_repairs', JSON.stringify(freshRepairs));
+      setLoading(false);
+    } catch (err) {
+      console.error('Error cargando reparaciones:', err);
+      setError('No se pudieron cargar las reparaciones');
+      setLoading(false);
+
+      // Intentar usar caché si hay error
+      try {
+        const cachedRepairs = await AsyncStorage.getItem('admin_repairs');
+        if (cachedRepairs) {
+          setRepairs(JSON.parse(cachedRepairs));
+          setError('Mostrando datos en caché (modo offline)');
+        }
+      } catch (cacheErr) {
+        console.error('Error leyendo caché:', cacheErr);
+      }
+    }
+  };
+
+  const handleRepairPress = async (repair) => {
+    // Guardar reparación seleccionada en AsyncStorage
+    await AsyncStorage.setItem('selectedRepair', JSON.stringify(repair));
+    console.log('Reparación seleccionada:', repair);
+  };
+
+  if (loading && repairs.length === 0) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>📋 Trabajos del Día</Text>
+
+      {error && <ErrorMessage message={error} />}
+
+      {repairs.length === 0 && !loading ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hay reparaciones pendientes</Text>
+        </View>
+      ) : (
+        <FlatList
+          scrollEnabled={false}
+          data={repairs}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <RepairCard
+              item={item}
+              onPress={() => handleRepairPress(item)}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Cargando reparaciones...</Text>
             </View>
-            <Text style={styles.status}>{item.status}</Text>
-          </View>
-        )}
+          }
+        />
+      )}
+
+      <CustomButton
+        title="+ Nueva Reparación"
+        onPress={() => navigation.navigate('NuevaReparacion')}
+        variant="primary"
+        style={styles.btnAdd}
       />
 
-      <TouchableOpacity
-        style={styles.btnAdd}
+      <CustomButton
+        title="Siguiente: Registrar Prenda →"
         onPress={() => navigation.navigate('NuevaReparacion')}
-      >
-        <Text style={styles.btnText}>+ Nueva Reparación</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
+        variant="secondary"
         style={styles.btnNext}
-        onPress={() => navigation.navigate('NuevaReparacion')}
-      >
-        <Text style={styles.btnNextText}>Siguiente: Registrar Prenda →</Text>
-      </TouchableOpacity>
-    </View>
+      />
+    </ScrollView>
   );
 }
 
@@ -49,51 +120,27 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: Colour.background
-
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     color: Colour.primary,
     marginBottom: 20
-
   },
-  card: {
-    backgroundColor: '#FFF',
-    padding: 15, borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    elevation: 2
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 40,
+    justifyContent: 'center'
   },
-  clientName: {
-    fontWeight: 'bold',
-    fontSize: 16
-  },
-  status: {
-    color: Colour.secondary,
-    fontWeight: 'bold'
+  emptyText: {
+    color: Colour.text,
+    fontSize: 16,
+    textAlign: 'center'
   },
   btnAdd: {
-    backgroundColor: Colour.primary,
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10
-  },
-  btnText: {
-    color: '#FFF',
-    textAlign: 'center',
-    fontWeight: 'bold'
+    marginBottom: 10
   },
   btnNext: {
-    marginTop: 20,
-    padding: 10,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: Colour.text
-  },
-  btnNextText: {
-    textAlign: 'center',
-    color: Colour.text
+    marginBottom: 30
   }
 });

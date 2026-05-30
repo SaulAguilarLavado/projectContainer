@@ -1,32 +1,100 @@
-import React from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colour from '../../constants/Colour';
+import { getProducts } from '../../services/api';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import ProductCard from '../../components/ProductCard';
+import CustomButton from '../../components/CustomButton';
 
-const products = [
-  { id: 1, name: 'Hilo Seda', price: '15.00', stock: 10 },
-  { id: 2, name: 'Botones x10', price: '5.00', stock: 50 },
-  { id: 3, name: 'Aguja Industrial', price: '2.50', stock: 0 },
-];
-
+/**
+ * CatalogScreen: Muestra catálogo de productos
+ * - Consume API con manejo de estados
+ * - Usa AsyncStorage para cachear productos
+ * - Componentes reutilizables
+ */
 export default function CatalogScreen({ navigation }) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Intentar cargar del caché primero
+      const cachedProducts = await AsyncStorage.getItem('products_catalog');
+      if (cachedProducts) {
+        setProducts(JSON.parse(cachedProducts));
+      }
+
+      // Obtener datos frescos de la API
+      const freshProducts = await getProducts();
+      setProducts(freshProducts);
+
+      // Guardar en AsyncStorage
+      await AsyncStorage.setItem('products_catalog', JSON.stringify(freshProducts));
+      setLoading(false);
+    } catch (err) {
+      console.error('Error cargando productos:', err);
+      setError('No se pudieron cargar los productos');
+      setLoading(false);
+
+      // Usar caché si hay error
+      try {
+        const cachedProducts = await AsyncStorage.getItem('products_catalog');
+        if (cachedProducts) {
+          setProducts(JSON.parse(cachedProducts));
+          setError('Mostrando datos en caché (modo offline)');
+        }
+      } catch (cacheErr) {
+        console.error('Error leyendo caché:', cacheErr);
+      }
+    }
+  };
+
+  const handleProductPress = (product) => {
+    console.log('Producto seleccionado:', product);
+  };
+
+  if (loading && products.length === 0) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Catálogo de Productos</Text>
+      <Text style={styles.title}>🛍️ Catálogo de Productos</Text>
+
+      {error && <ErrorMessage message={error} />}
+
       <View style={styles.grid}>
         {products.map(item => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.imgPlaceholder} />
-            <Text style={styles.prodName}>{item.name}</Text>
-            <Text style={styles.prodPrice}>S/ {item.price}</Text>
-            <Text style={[styles.stock, { color: item.stock > 0 ? 'green' : 'red' }]}>
-              Stock: {item.stock}
-            </Text>
-          </View>
+          <ProductCard
+            key={item.id}
+            product={item}
+            onPress={() => handleProductPress(item)}
+          />
         ))}
       </View>
-      <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.btnEnd}>
-        <Text style={styles.btnEndText}>Volver al Inicio (Demo terminada)</Text>
-      </TouchableOpacity>
+
+      {products.length === 0 && !loading && (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hay productos disponibles</Text>
+        </View>
+      )}
+
+      <CustomButton
+        title="Volver al Inicio (Demo terminada)"
+        onPress={() => navigation.navigate('Login')}
+        variant="primary"
+        style={styles.btnEnd}
+      />
     </ScrollView>
   );
 }
@@ -34,50 +102,32 @@ export default function CatalogScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 15
+    padding: 15,
+    backgroundColor: Colour.background
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center'
+    textAlign: 'center',
+    color: Colour.primary
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between'
   },
-  card: {
-    width: '48%',
-    backgroundColor: '#FFF',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 15,
-    elevation: 3
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 40,
+    justifyContent: 'center'
   },
-  imgPlaceholder: {
-    height: 100,
-    backgroundColor: '#DDD',
-    borderRadius: 8,
-    marginBottom: 5
-  },
-  prodName: {
-    fontWeight: 'bold'
-  },
-  prodPrice: {
-    color: Colour.primary
-  },
-  stock: {
-    fontSize: 12
+  emptyText: {
+    color: Colour.text,
+    fontSize: 16,
+    textAlign: 'center'
   },
   btnEnd: {
-    marginVertical: 30,
-    padding: 15,
-    backgroundColor: Colour.text,
-    borderRadius: 10
-  },
-  btnEndText: {
-    color: '#FFF',
-    textAlign: 'center'
+    marginVertical: 30
   }
 });
