@@ -16,13 +16,50 @@ export const API_ENDPOINTS = {
 
 /**
  * Login de usuario
- * Soporta: usuarios de prueba predefinidos + usuarios registrados temporalmente
+ * Intenta conectar con backend real primero, fallback a usuarios locales
  * @param {string} username - Nombre de usuario
  * @param {string} password - Contraseña
  * @param {array} registeredUsers - Lista de usuarios registrados temporalmente
  * @returns {Promise} Respuesta con datos del usuario
  */
 export const loginUsuario = async (username, password, registeredUsers = []) => {
+  try {
+    // Intentar conectar con el backend real
+    console.log('Intentando conectar con backend en:', API_ENDPOINTS.LOGIN);
+    
+    const response = await fetch(API_ENDPOINTS.LOGIN, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: username.trim(),
+        password: password.trim()
+      }),
+      timeout: 5000
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Login exitoso con backend:', data);
+      
+      // Mapear la respuesta del backend al formato esperado
+      return {
+        usuario: {
+          id: data.usuario.id || data.usuario.username,
+          name: data.usuario.nombre || data.usuario.email,
+          email: data.usuario.email,
+          role: data.usuario.role === 'costurera' ? 'admin' : 'customer', // Mapear roles
+          username: data.usuario.username
+        },
+        token: data.token || `token_${data.usuario.id}_${Date.now()}`
+      };
+    }
+  } catch (backendError) {
+    console.warn('No se pudo conectar con backend, usando usuarios locales:', backendError);
+  }
+
+  // Fallback: Usar usuarios locales
   try {
     // Usuarios de prueba predefinidos
     const testUsers = [
@@ -60,6 +97,8 @@ export const loginUsuario = async (username, password, registeredUsers = []) => 
     if (!foundUser) {
       throw new Error('Usuario o contraseña incorrectos');
     }
+
+    console.log('Login exitoso con usuario local:', foundUser.username);
 
     // Retornar usuario encontrado
     return {
