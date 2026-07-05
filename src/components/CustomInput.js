@@ -10,7 +10,10 @@ export default function CustomInput({
   keyboardType = 'default',
   error = null,
   label = null,
-  editable = true
+  editable = true,
+  maxLength,
+  multiline = false,
+  autoCapitalize = 'none'
 }) {
   return (
     <View style={styles.container}>
@@ -23,8 +26,11 @@ export default function CustomInput({
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         editable={editable}
+        maxLength={maxLength}
+        multiline={multiline}
+        textAlignVertical={multiline ? 'top' : 'center'}
         placeholderTextColor="#999"
-        autoCapitalize="none"
+        autoCapitalize={autoCapitalize}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -39,7 +45,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
     color: Colour.text,
-    fontSize: 14
+    fontSize: 14,
+    minHeight: 46
   },
   input: {
     backgroundColor: Colour.white,

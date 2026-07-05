@@ -1,224 +1,222 @@
-/**
- * Servicio centralizado de API
- * Conecta con el backend FastAPI en http://localhost:8000
- */
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import logger from '../utils/logger';
 
-const BASE_URL = 'http://localhost:8000';
-
-// Endpoints disponibles
-export const API_ENDPOINTS = {
-  LOGIN: `${BASE_URL}/login`,
-  USUARIOS: `${BASE_URL}/usuarios`,
-  REPAIRS: `${BASE_URL}/reparaciones`, // Futuro
-  PRODUCTS: `${BASE_URL}/productos`,   // Futuro
-  HEALTH: `${BASE_URL}/health`
+const getMetroHost = () => {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (!hostUri) return null;
+  if (hostUri.startsWith('[')) return hostUri.slice(1, hostUri.indexOf(']'));
+  return hostUri.split(':')[0];
 };
 
-/**
- * Login de usuario
- * Intenta conectar con backend real primero, fallback a usuarios locales
- * @param {string} username - Nombre de usuario
- * @param {string} password - Contraseña
- * @param {array} registeredUsers - Lista de usuarios registrados temporalmente
- * @returns {Promise} Respuesta con datos del usuario
- */
-export const loginUsuario = async (username, password, registeredUsers = []) => {
+const metroHost = getMetroHost();
+const DEFAULT_BASE_URL = metroHost
+  ? `http://${metroHost}:8000`
+  : Platform.OS === 'android'
+    ? 'http://10.0.2.2:8000'
+    : 'http://localhost:8000';
+
+export const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
+logger.info('api_base_url_configured', { baseUrl: BASE_URL, source: process.env.EXPO_PUBLIC_API_URL ? 'environment' : 'automatic' });
+
+export const API_ENDPOINTS = {
+  LOGIN: '/login',
+  REGISTER: '/register',
+  USUARIOS: '/usuarios',
+  REPAIRS: '/reparaciones',
+  PRODUCTS: '/productos',
+  HEALTH: '/health'
+};
+
+export class ApiError extends Error {
+  constructor(message, status = 0, details = null) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+  }
+}
+
+const request = async (path, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 10000);
+  const startedAt = Date.now();
+
   try {
-    // Intentar conectar con el backend real
-    console.log('Intentando conectar con backend en:', API_ENDPOINTS.LOGIN);
-    
-    const response = await fetch(API_ENDPOINTS.LOGIN, {
-      method: 'POST',
+    const response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
       headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username: username.trim(),
-        password: password.trim()
-      }),
-      timeout: 5000
+        Accept: 'application/json',
+        ...(options.headers || {})
+      }
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log('Login exitoso con backend:', data);
-      
-      // Mapear la respuesta del backend al formato esperado
-      return {
-        usuario: {
-          id: data.usuario.id || data.usuario.username,
-          name: data.usuario.nombre || data.usuario.email,
-          email: data.usuario.email,
-          role: data.usuario.role === 'costurera' ? 'admin' : 'customer', // Mapear roles
-          username: data.usuario.username
-        },
-        token: data.token || `token_${data.usuario.id}_${Date.now()}`
-      };
-    }
-  } catch (backendError) {
-    console.warn('No se pudo conectar con backend, usando usuarios locales:', backendError);
-  }
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text();
 
-  // Fallback: Usar usuarios locales
-  try {
-    // Usuarios de prueba predefinidos
-    const testUsers = [
-      {
-        id: '1',
-        username: 'admin',
-        password: 'admin123',
-        name: 'Administrador',
-        email: 'admin@textilcontrol.com',
-        role: 'admin'
-      },
-      {
-        id: '2',
-        username: 'cliente1',
-        password: 'cliente123',
-        name: 'Cliente Demo',
-        email: 'cliente@textilcontrol.com',
-        role: 'customer'
-      }
-    ];
-
-    // Buscar en usuarios de prueba
-    let foundUser = testUsers.find(
-      u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-    );
-
-    // Si no encuentra en prueba, buscar en usuarios registrados temporalmente
-    if (!foundUser && registeredUsers && registeredUsers.length > 0) {
-      foundUser = registeredUsers.find(
-        u => u.email.toLowerCase() === username.toLowerCase() && u.password === password
-      );
+    if (!response.ok) {
+      const detail = data?.detail;
+      const message = Array.isArray(detail)
+        ? detail.map(item => item.msg).join('. ')
+        : detail || `La API respondió con estado ${response.status}`;
+      throw new ApiError(message, response.status, data);
     }
 
-    // Si no encuentra el usuario, lanzar error
-    if (!foundUser) {
-      throw new Error('Usuario o contraseña incorrectos');
-    }
-
-    console.log('Login exitoso con usuario local:', foundUser.username);
-
-    // Retornar usuario encontrado
-    return {
-      usuario: {
-        id: foundUser.id,
-        name: foundUser.name || foundUser.email,
-        email: foundUser.email,
-        role: foundUser.role || 'customer',
-        username: foundUser.username || foundUser.email
-      },
-      token: `token_${foundUser.id}_${Date.now()}`
-    };
+    logger.info('api_request_ok', {
+      method: options.method || 'GET',
+      path,
+      durationMs: Date.now() - startedAt
+    });
+    return data;
   } catch (error) {
-    console.error('Error en loginUsuario:', error);
-    throw error;
+    if (error.name === 'AbortError') {
+      throw new ApiError(`La solicitud tardó demasiado. No se pudo acceder a ${BASE_URL}.`);
+    }
+    if (error instanceof ApiError) throw error;
+    logger.handled('api_request_failed', error, { path, baseUrl: BASE_URL });
+    throw new ApiError(`No se pudo conectar con el servidor en ${BASE_URL}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
-/**
- * Obtener lista de reparaciones (usando /todos como simulación)
- */
-export const getRepairs = async () => {
-  try {
-    // Temporal: usando JSONPlaceholder hasta que el backend tenga el endpoint
-    const response = await fetch('https://jsonplaceholder.typicode.com/todos?_limit=10');
-    if (!response.ok) throw new Error('Error al obtener reparaciones');
+const mapUser = user => ({
+  id: user.id,
+  name: user.nombre,
+  email: user.email,
+  role: user.role,
+  username: user.username,
+  active: user.activo
+});
 
-    const data = await response.json();
+const mapRepair = repair => ({
+  id: String(repair.id),
+  clientId: repair.cliente_id,
+  client: repair.cliente,
+  item: repair.prenda,
+  description: repair.descripcion,
+  status: repair.estado,
+  date: repair.fecha_entrega,
+  cost: repair.costo,
+  location: repair.ubicacion,
+  photoUrl: repair.foto_url,
+  createdAt: repair.creado_en,
+  updatedAt: repair.actualizado_en
+});
 
-    // Transformar datos para el formato esperado
-    return data.map((item, index) => ({
-      id: item.id.toString(),
-      client: `Cliente ${item.userId}`,
-      item: item.title.substring(0, 30),
-      status: item.completed ? 'Completado' : (index % 2 === 0 ? 'En Proceso' : 'Pendiente'),
-      date: `${15 + index}/10`
-    }));
-  } catch (error) {
-    console.error('Error en getRepairs:', error);
-    throw error;
-  }
+const mapProduct = product => ({
+  id: product.id,
+  name: product.nombre,
+  price: product.precio,
+  stock: product.stock,
+  description: product.descripcion
+});
+
+export const loginUsuario = async (username, password) => {
+  const data = await request(API_ENDPOINTS.LOGIN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username.trim(), password })
+  });
+
+  return { usuario: mapUser(data.usuario), token: data.token };
 };
 
-/**
- * Obtener lista de productos (usando /posts como simulación)
- */
+export const registerUsuario = async userData => {
+  const data = await request(API_ENDPOINTS.REGISTER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre: userData.name.trim(),
+      email: userData.email.trim().toLowerCase(),
+      password: userData.password
+    })
+  });
+  return mapUser(data.usuario);
+};
+
+export const getRepairs = async clientId => {
+  const query = clientId ? `?cliente_id=${encodeURIComponent(clientId)}` : '';
+  const data = await request(`${API_ENDPOINTS.REPAIRS}${query}`);
+  return data.map(mapRepair);
+};
+
+export const createRepair = async repair => {
+  const form = new FormData();
+  form.append('cliente_id', String(repair.clientId));
+  form.append('prenda', repair.item.trim());
+  form.append('descripcion', repair.description.trim());
+  form.append('fecha_entrega', repair.deliveryDate.trim());
+  form.append('costo', String(repair.cost));
+  form.append('ubicacion', repair.location.trim().toUpperCase());
+
+  if (repair.photoUri) {
+    const rawName = repair.photoUri.split('/').pop() || `evidencia-${Date.now()}.jpg`;
+    const extension = rawName.split('.').pop()?.toLowerCase();
+    const type = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    form.append('foto', { uri: repair.photoUri, name: rawName, type });
+  }
+
+  const data = await request(API_ENDPOINTS.REPAIRS, {
+    method: 'POST',
+    body: form,
+    timeout: 20000
+  });
+  return mapRepair(data);
+};
+
+export const updateRepairStatus = async (repairId, status) => {
+  const data = await request(`${API_ENDPOINTS.REPAIRS}/${repairId}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado: status })
+  });
+  return mapRepair(data);
+};
+
 export const getProducts = async () => {
-  try {
-    // Temporal: usando JSONPlaceholder hasta que el backend tenga el endpoint
-    const response = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=6');
-    if (!response.ok) throw new Error('Error al obtener productos');
-
-    const data = await response.json();
-
-    // Transformar datos para el formato esperado
-    return data.map((item, index) => ({
-      id: item.id,
-      name: item.title.substring(0, 25),
-      price: (Math.random() * 50).toFixed(2),
-      stock: Math.floor(Math.random() * 100)
-    }));
-  } catch (error) {
-    console.error('Error en getProducts:', error);
-    throw error;
-  }
+  const data = await request(API_ENDPOINTS.PRODUCTS);
+  return data.map(mapProduct);
 };
 
-/**
- * Registrar usuario temporalmente (en memoria/AsyncStorage)
- * @param {object} userData - {name, email, password}
- * @returns {Promise} Usuario creado
- */
-export const registerUsuario = async (userData) => {
-  try {
-    const newUser = {
-      id: Date.now().toString(),
-      name: userData.name,
-      email: userData.email.toLowerCase(),
-      password: userData.password,
-      role: 'customer',
-      created_at: new Date().toISOString()
-    };
-
-    // Aquí se guarda temporalmente (en una app real iría al backend)
-    // Por ahora lo retornamos para que se guarde en AsyncStorage
-    return newUser;
-  } catch (error) {
-    console.error('Error en registerUsuario:', error);
-    throw error;
-  }
+export const createProduct = async product => {
+  const data = await request(API_ENDPOINTS.PRODUCTS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre: product.name.trim(),
+      precio: Number(product.price),
+      stock: Number(product.stock),
+      descripcion: product.description.trim()
+    })
+  });
+  return mapProduct(data);
 };
 
-/**
- * Obtener lista de usuarios registrados (temporales)
- * @returns {Promise} Lista de usuarios
- */
+export const updateProduct = async (productId, product) => {
+  const data = await request(`${API_ENDPOINTS.PRODUCTS}/${productId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre: product.name.trim(),
+      precio: Number(product.price),
+      stock: Number(product.stock),
+      descripcion: product.description.trim()
+    })
+  });
+  return mapProduct(data);
+};
+
+export const deleteProduct = productId => request(`${API_ENDPOINTS.PRODUCTS}/${productId}`, {
+  method: 'DELETE'
+});
+
 export const getUsuarios = async () => {
-  try {
-    // Retorna usuarios de ejemplo
-    return [
-      { id: '1', name: 'Juan Pérez', email: 'juan@ejemplo.com', role: 'customer' },
-      { id: '2', name: 'María García', email: 'maria@ejemplo.com', role: 'customer' },
-      { id: '3', name: 'Carlos López', email: 'carlos@ejemplo.com', role: 'customer' }
-    ];
-  } catch (error) {
-    console.error('Error en getUsuarios:', error);
-    throw error;
-  }
+  const data = await request(API_ENDPOINTS.USUARIOS);
+  return data.map(mapUser);
 };
 
-/**
- * Verificar estado de la API
- */
-export const checkHealth = async () => {
-  try {
-    const response = await fetch(API_ENDPOINTS.HEALTH);
-    if (!response.ok) throw new Error('API no disponible');
-    return await response.json();
-  } catch (error) {
-    console.error('Error verificando salud de API:', error);
-    throw error;
-  }
-};
+export const checkHealth = () => request(API_ENDPOINTS.HEALTH);

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import Colour from '../../constants/Colour';
 import { getRepairs } from '../../services/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import RepairCard from '../../components/RepairCard';
 import CustomButton from '../../components/CustomButton';
+import logger from '../../utils/logger';
 
 /**
  * AdminHomeScreen: Pantalla del administrador que muestra trabajos del día
@@ -19,31 +21,30 @@ export default function AdminHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadRepairs();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadRepairs();
+    }, [])
+  );
 
   const loadRepairs = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Intentar cargar del caché local primero (AsyncStorage)
       const cachedRepairs = await AsyncStorage.getItem('admin_repairs');
       if (cachedRepairs) {
         setRepairs(JSON.parse(cachedRepairs));
       }
 
-      // Luego intentar obtener datos frescos de la API
       const freshRepairs = await getRepairs();
       setRepairs(freshRepairs);
 
-      // Guardar en AsyncStorage para uso posterior offline
       await AsyncStorage.setItem('admin_repairs', JSON.stringify(freshRepairs));
       setLoading(false);
     } catch (err) {
-      console.error('Error cargando reparaciones:', err);
-      setError('No se pudieron cargar las reparaciones');
+      logger.handled('admin_repairs_load_failed', err);
+      setError(err.message || 'No se pudieron cargar las reparaciones');
       setLoading(false);
 
       // Intentar usar caché si hay error
@@ -51,10 +52,10 @@ export default function AdminHomeScreen({ navigation }) {
         const cachedRepairs = await AsyncStorage.getItem('admin_repairs');
         if (cachedRepairs) {
           setRepairs(JSON.parse(cachedRepairs));
-          setError('Mostrando datos en caché (modo offline)');
+          setError('Sin conexión: mostrando reparaciones guardadas en caché.');
         }
       } catch (cacheErr) {
-        console.error('Error leyendo caché:', cacheErr);
+        logger.handled('admin_repairs_cache_read_failed', cacheErr);
       }
     }
   };
@@ -80,22 +81,9 @@ export default function AdminHomeScreen({ navigation }) {
           <Text style={styles.emptyText}>No hay reparaciones pendientes</Text>
         </View>
       ) : (
-        <FlatList
-          scrollEnabled={false}
-          data={repairs}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <RepairCard
-              item={item}
-              onPress={() => handleRepairPress(item)}
-            />
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Cargando reparaciones...</Text>
-            </View>
-          }
-        />
+        repairs.map(item => (
+          <RepairCard key={item.id} item={item} onPress={() => handleRepairPress(item)} />
+        ))
       )}
 
       <CustomButton

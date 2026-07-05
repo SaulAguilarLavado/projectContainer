@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Colour from '../constants/Colour';
 
 export default function RepairCard({ 
@@ -21,10 +21,14 @@ export default function RepairCard({
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
+      {item.photoUrl && (
+        <Image source={{ uri: item.photoUrl }} style={styles.photo} resizeMode="cover" />
+      )}
       <View style={styles.content}>
         <Text style={styles.clientName}>{item.client}</Text>
         <Text style={styles.itemText}>{item.item}</Text>
         <Text style={styles.dateText}>Fecha: {item.date}</Text>
+        <Text style={styles.dateText}>Almacén: {item.location} · S/ {Number(item.cost).toFixed(2)}</Text>
       </View>
       <Text style={[styles.status, { color: getStatusColor(item.status) }]}>
         {item.status}
@@ -43,6 +47,13 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderLeftWidth: 4,
     borderLeftColor: Colour.primary
+  },
+  photo: {
+    width: '100%',
+    height: 145,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#E8ECEF'
   },
   content: {
     flex: 1,

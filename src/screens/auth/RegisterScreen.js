@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colour from '../../constants/Colour';
 import { registerUsuario } from '../../services/api';
+import logger from '../../utils/logger';
 
 export default function RegisterScreen({ navigation }) {
   // Estados para los campos
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   // Estados para los mensajes de error (Excepciones)
   const [errors, setErrors] = useState({});
@@ -30,22 +32,14 @@ export default function RegisterScreen({ navigation }) {
 
     // Si no hay errores (el objeto está vacío), procedemos
     if (Object.keys(tempErrors).length === 0) {
+      setLoading(true);
+      setServerError('');
       try {
-        // Registrar usuario
-        const newUser = await registerUsuario({
+        await registerUsuario({
           name: name.trim(),
           email: email.trim().toLowerCase(),
           password
         });
-
-        // Guardar usuario temporalmente en AsyncStorage
-        await AsyncStorage.setItem('tempUser', JSON.stringify(newUser));
-        
-        // Guardar en lista de usuarios temporales
-        const existingUsers = await AsyncStorage.getItem('registeredUsers');
-        const usersList = existingUsers ? JSON.parse(existingUsers) : [];
-        usersList.push(newUser);
-        await AsyncStorage.setItem('registeredUsers', JSON.stringify(usersList));
 
         Alert.alert("Éxito", "Usuario registrado correctamente");
         
@@ -58,8 +52,12 @@ export default function RegisterScreen({ navigation }) {
         // Navegar a login
         navigation.navigate('Login');
       } catch (err) {
-        Alert.alert("Error", "No se pudo registrar el usuario");
-        console.error('Error registrando:', err);
+        const message = err.message || 'No se pudo registrar el usuario';
+        setServerError(message);
+        Alert.alert("No se pudo registrar", message);
+        logger.handled('register_failed', err);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -69,6 +67,7 @@ export default function RegisterScreen({ navigation }) {
       <View style={styles.innerContainer}>
         <Text style={styles.title}>📝 Crear Cuenta</Text>
         <Text style={styles.subtitle}>Regístrate para usar la aplicación</Text>
+        {!!serverError && <Text style={styles.serverError}>{serverError}</Text>}
 
         {/* Input Nombre */}
         <Text style={styles.label}>Nombre Completo:</Text>
@@ -105,8 +104,8 @@ export default function RegisterScreen({ navigation }) {
         />
         {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-        <TouchableOpacity style={styles.btnMain} onPress={validateForm}>
-          <Text style={styles.btnText}>Crear Cuenta</Text>
+        <TouchableOpacity style={[styles.btnMain, loading && styles.disabled]} onPress={validateForm} disabled={loading}>
+          <Text style={styles.btnText}>{loading ? 'Creando cuenta...' : 'Crear Cuenta'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.btnSecondary}>
@@ -166,6 +165,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 15
   },
+  serverError: {
+    color: Colour.white,
+    backgroundColor: Colour.error,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    textAlign: 'center'
+  },
   btnMain: {
     backgroundColor: Colour.primary,
     padding: 15,
@@ -186,5 +193,8 @@ const styles = StyleSheet.create({
   btnSecondaryText: {
     color: Colour.secondary,
     fontWeight: '600'
+  },
+  disabled: {
+    opacity: 0.55
   }
 });

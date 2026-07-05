@@ -6,19 +6,23 @@ import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
 import AddRepairScreen from '../screens/admin/AddRepairScreen';
 import AdminRepairsStatusScreen from '../screens/admin/AdminRepairsStatusScreen';
 import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
-import CatalogScreen from '../screens/shared/CatalogScreen';
+import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
+import LogoutButton from '../components/LogoutButton';
 import Colour from '../constants/Colour';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+const stackScreenOptions = ({ navigation }) => ({
+  headerStyle: { backgroundColor: Colour.primary },
+  headerTintColor: '#fff',
+  headerTitleStyle: { fontWeight: 'bold' },
+  headerRight: () => <LogoutButton navigation={navigation} />
+});
+
 const AdminHomeStack = () => (
   <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colour.primary },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' }
-    }}
+    screenOptions={stackScreenOptions}
   >
     <Stack.Screen
       name="AdminHomeScreen"
@@ -35,27 +39,19 @@ const AdminHomeStack = () => (
 
 const CatalogStack = () => (
   <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colour.primary },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' }
-    }}
+    screenOptions={stackScreenOptions}
   >
     <Stack.Screen
-      name="CatalogScreen"
-      component={CatalogScreen}
-      options={{ title: 'Catálogo de Productos' }}
+      name="AdminProductsScreen"
+      component={AdminProductsScreen}
+      options={{ title: 'Gestión de Productos' }}
     />
   </Stack.Navigator>
 );
 
 const StatusStack = () => (
   <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colour.primary },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' }
-    }}
+    screenOptions={stackScreenOptions}
   >
     <Stack.Screen
       name="AdminRepairsStatusScreen"
@@ -67,11 +63,7 @@ const StatusStack = () => (
 
 const UsersStack = () => (
   <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colour.primary },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' }
-    }}
+    screenOptions={stackScreenOptions}
   >
     <Stack.Screen
       name="AdminUsersScreen"

@@ -7,6 +7,7 @@ import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
+import logger from '../../utils/logger';
 import { StyleSheet, Text } from 'react-native';
 
 /**
@@ -46,12 +47,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // Obtener usuarios registrados temporalmente
-      const registeredUsersJson = await AsyncStorage.getItem('registeredUsers');
-      const registeredUsers = registeredUsersJson ? JSON.parse(registeredUsersJson) : [];
-
-      // Llamar función de login con usuarios registrados
-      const response = await loginUsuario(username, password, registeredUsers);
+      const response = await loginUsuario(username, password);
 
       // Guardar datos del usuario en AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(response.usuario));
@@ -73,7 +69,7 @@ export default function LoginScreen({ navigation }) {
       setUsername('');
       setPassword('');
     } catch (err) {
-      console.error('Error en login:', err);
+      logger.handled('login_failed', err);
       setError(err.message || 'Error al iniciar sesión');
       
       Alert.alert(

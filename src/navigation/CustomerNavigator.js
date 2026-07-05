@@ -4,18 +4,22 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import MyRepairsScreen from '../screens/customer/MyRepairsScreen';
 import CatalogScreen from '../screens/shared/CatalogScreen';
+import LogoutButton from '../components/LogoutButton';
 import Colour from '../constants/Colour';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+const stackScreenOptions = ({ navigation }) => ({
+  headerStyle: { backgroundColor: Colour.primary },
+  headerTintColor: '#fff',
+  headerTitleStyle: { fontWeight: 'bold' },
+  headerRight: () => <LogoutButton navigation={navigation} />
+});
+
 const RepairsStack = () => (
   <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colour.primary },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' }
-    }}
+    screenOptions={stackScreenOptions}
   >
     <Stack.Screen
       name="MyRepairsScreen"
@@ -27,11 +31,7 @@ const RepairsStack = () => (
 
 const CatalogStack = () => (
   <Stack.Navigator
-    screenOptions={{
-      headerStyle: { backgroundColor: Colour.primary },
-      headerTintColor: '#fff',
-      headerTitleStyle: { fontWeight: 'bold' }
-    }}
+    screenOptions={stackScreenOptions}
   >
     <Stack.Screen
       name="CatalogScreen"

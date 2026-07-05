@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import ProductCard from '../../components/ProductCard';
 import CustomButton from '../../components/CustomButton';
+import logger from '../../utils/logger';
 
 /**
  * CatalogScreen: Muestra catálogo de productos
@@ -42,7 +43,7 @@ export default function CatalogScreen({ navigation }) {
       await AsyncStorage.setItem('products_catalog', JSON.stringify(freshProducts));
       setLoading(false);
     } catch (err) {
-      console.error('Error cargando productos:', err);
+      logger.handled('products_load_failed', err);
       setError('No se pudieron cargar los productos');
       setLoading(false);
 
@@ -54,7 +55,7 @@ export default function CatalogScreen({ navigation }) {
           setError('Mostrando datos en caché (modo offline)');
         }
       } catch (cacheErr) {
-        console.error('Error leyendo caché:', cacheErr);
+        logger.handled('products_cache_read_failed', cacheErr);
       }
     }
   };
@@ -90,9 +91,10 @@ export default function CatalogScreen({ navigation }) {
       )}
 
       <CustomButton
-        title="Volver al Inicio (Demo terminada)"
-        onPress={() => navigation.navigate('Login')}
-        variant="primary"
+        title={loading ? 'Actualizando...' : 'Actualizar catálogo'}
+        onPress={loadProducts}
+        disabled={loading}
+        variant="secondary"
         style={styles.btnEnd}
       />
     </ScrollView>
