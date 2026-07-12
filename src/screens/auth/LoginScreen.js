@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Alert, ScrollView } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colour from '../../constants/Colour';
 import { loginUsuario } from '../../services/api';
@@ -8,7 +8,6 @@ import CustomButton from '../../components/CustomButton';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import logger from '../../utils/logger';
-import { StyleSheet, Text } from 'react-native';
 
 /**
  * LoginScreen: Pantalla de autenticación
@@ -128,22 +127,24 @@ export default function LoginScreen({ navigation }) {
           style={styles.btnNext}
         />
 
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>👤 Credenciales de Prueba</Text>
-          <View style={styles.credentialRow}>
-            <Text style={styles.credentialLabel}>Admin:</Text>
-            <Text style={styles.credentialValue}>admin</Text>
-            <Text style={styles.credentialSeparator}>/</Text>
-            <Text style={styles.credentialValue}>admin123</Text>
+        {__DEV__ && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>Credenciales de Prueba</Text>
+            <View style={styles.credentialRow}>
+              <Text style={styles.credentialLabel}>Admin:</Text>
+              <Text style={styles.credentialValue}>admin</Text>
+              <Text style={styles.credentialSeparator}>/</Text>
+              <Text style={styles.credentialValue}>admin123</Text>
+            </View>
+            <View style={styles.credentialRow}>
+              <Text style={styles.credentialLabel}>Cliente:</Text>
+              <Text style={styles.credentialValue}>cliente1</Text>
+              <Text style={styles.credentialSeparator}>/</Text>
+              <Text style={styles.credentialValue}>cliente123</Text>
+            </View>
+            <Text style={styles.infoHint}>O usa tu cuenta registrada</Text>
           </View>
-          <View style={styles.credentialRow}>
-            <Text style={styles.credentialLabel}>Cliente:</Text>
-            <Text style={styles.credentialValue}>cliente1</Text>
-            <Text style={styles.credentialSeparator}>/</Text>
-            <Text style={styles.credentialValue}>cliente123</Text>
-          </View>
-          <Text style={styles.infoHint}>O usa tu cuenta registrada</Text>
-        </View>
+        )}
       </View>
     </ScrollView>
   );

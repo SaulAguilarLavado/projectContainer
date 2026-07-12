@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import Colour from '../constants/Colour';
 
 export default function ProductCard({ product, onPress }) {
@@ -11,7 +11,11 @@ export default function ProductCard({ product, onPress }) {
       onPress={onPress}
       disabled={isOutOfStock}
     >
-      <View style={styles.imagePlaceholder} />
+      {product.photoUrl ? (
+        <Image source={{ uri: product.photoUrl }} style={styles.productImage} resizeMode="cover" />
+      ) : (
+        <View style={styles.imagePlaceholder} />
+      )}
       <Text style={styles.productName} numberOfLines={2}>
         {product.name}
       </Text>
@@ -40,6 +44,12 @@ const styles = StyleSheet.create({
   },
   outOfStock: {
     opacity: 0.6
+  },
+  productImage: {
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#DDD'
   },
   imagePlaceholder: {
     height: 100,

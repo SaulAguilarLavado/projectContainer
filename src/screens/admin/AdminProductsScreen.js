@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -12,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import Colour from '../../constants/Colour';
 import CustomButton from '../../components/CustomButton';
 import CustomInput from '../../components/CustomInput';
@@ -32,6 +35,12 @@ export default function AdminProductsScreen() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState({});
+  const cameraRef = useRef(null);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [takingPhoto, setTakingPhoto] = useState(false);
+  const [photoUri, setPhotoUri] = useState(null);
 
   useFocusEffect(useCallback(() => { loadProducts(); }, []));
 
@@ -63,10 +72,51 @@ export default function AdminProductsScreen() {
     setFormErrors(current => ({ ...current, [field]: null }));
   };
 
+  const openCamera = async () => {
+    try {
+      let permission = cameraPermission;
+      if (!permission?.granted && permission?.canAskAgain !== false) {
+        permission = await requestCameraPermission();
+      }
+      if (permission?.granted) {
+        setCameraReady(false);
+        setCameraVisible(true);
+        return;
+      }
+      const actions = [{ text: 'Cancelar', style: 'cancel' }];
+      if (permission?.canAskAgain === false) {
+        actions.push({ text: 'Abrir Ajustes', onPress: () => Linking.openSettings() });
+      } else {
+        actions.push({ text: 'Volver a intentar', onPress: openCamera });
+      }
+      Alert.alert('Permiso de cámara requerido', 'Toma una foto del producto.', actions);
+    } catch (error) {
+      logger.handled('product_camera_permission_failed', error);
+    }
+  };
+
+  const takePhoto = async () => {
+    if (!cameraRef.current || !cameraReady || takingPhoto) return;
+    setTakingPhoto(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      if (photo?.uri) {
+        setPhotoUri(photo.uri);
+        setCameraVisible(false);
+      }
+    } catch (error) {
+      logger.handled('product_camera_capture_failed', error);
+      Alert.alert('No se tomó la foto', 'Intenta nuevamente.');
+    } finally {
+      setTakingPhoto(false);
+    }
+  };
+
   const openCreate = () => {
     setSelectedProduct(null);
     setForm(EMPTY_FORM);
     setFormErrors({});
+    setPhotoUri(null);
     setModalVisible(true);
   };
 
@@ -79,6 +129,7 @@ export default function AdminProductsScreen() {
       description: product.description || ''
     });
     setFormErrors({});
+    setPhotoUri(null);
     setModalVisible(true);
   };
 
@@ -100,7 +151,8 @@ export default function AdminProductsScreen() {
       const payload = {
         ...form,
         price: Number(form.price.replace(',', '.')),
-        stock: Number(form.stock)
+        stock: Number(form.stock),
+        photoUri
       };
       const saved = selectedProduct
         ? await updateProduct(selectedProduct.id, payload)
@@ -182,15 +234,61 @@ export default function AdminProductsScreen() {
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>{selectedProduct ? 'Editar producto' : 'Nuevo producto'}</Text>
-            <CustomInput label="Nombre" value={form.name} onChangeText={value => updateField('name', value)} error={formErrors.name} />
-            <CustomInput label="Precio (S/)" value={form.price} onChangeText={value => updateField('price', value)} keyboardType="decimal-pad" error={formErrors.price} />
-            <CustomInput label="Stock" value={form.stock} onChangeText={value => updateField('stock', value)} keyboardType="number-pad" error={formErrors.stock} />
-            <CustomInput label="Descripción" value={form.description} onChangeText={value => updateField('description', value)} multiline maxLength={500} />
-            <CustomButton title={saving ? 'Guardando...' : 'Guardar producto'} onPress={saveProduct} disabled={saving} />
-            <CustomButton title="Cancelar" onPress={() => setModalVisible(false)} disabled={saving} variant="secondary" />
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              <Text style={styles.modalTitle}>{selectedProduct ? 'Editar producto' : 'Nuevo producto'}</Text>
+              <CustomInput label="Nombre" value={form.name} onChangeText={value => updateField('name', value)} error={formErrors.name} />
+              <CustomInput label="Precio (S/)" value={form.price} onChangeText={value => updateField('price', value)} keyboardType="decimal-pad" error={formErrors.price} />
+              <CustomInput label="Stock" value={form.stock} onChangeText={value => updateField('stock', value)} keyboardType="number-pad" error={formErrors.stock} />
+              <CustomInput label="Descripción" value={form.description} onChangeText={value => updateField('description', value)} multiline maxLength={500} />
+              <Text style={styles.photoLabel}>Foto del producto</Text>
+              {photoUri || selectedProduct?.photoUrl ? (
+                <Image source={{ uri: photoUri || selectedProduct.photoUrl }} style={styles.photoPreview} resizeMode="cover" />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Text style={styles.photoPlaceholderText}>Sin foto</Text>
+                </View>
+              )}
+              <CustomButton title={photoUri || selectedProduct?.photoUrl ? 'Volver a tomar foto' : 'Tomar foto'} onPress={openCamera} variant="secondary" />
+              <CustomButton title={saving ? 'Guardando...' : 'Guardar producto'} onPress={saveProduct} disabled={saving} />
+              <CustomButton title="Cancelar" onPress={() => setModalVisible(false)} disabled={saving} variant="secondary" />
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={cameraVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setCameraVisible(false)}>
+        <View style={styles.cameraContainer}>
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing="back"
+            mode="picture"
+            onCameraReady={() => setCameraReady(true)}
+            onMountError={() => {
+              setCameraVisible(false);
+              Alert.alert('Cámara no disponible', 'No se pudo iniciar la cámara.');
+            }}
+          />
+          <View style={styles.cameraHeader}>
+            <TouchableOpacity style={styles.closeCamera} onPress={() => setCameraVisible(false)}>
+              <Text style={styles.cameraActionText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.cameraFooter}>
+            <Text style={styles.cameraHint}>{cameraReady ? 'Toma la foto del producto' : 'Preparando cámara...'}</Text>
+            <TouchableOpacity
+              style={[styles.shutter, (!cameraReady || takingPhoto) && styles.shutterDisabled]}
+              onPress={takePhoto}
+              disabled={!cameraReady || takingPhoto}
+            >
+              <View style={styles.shutterInner} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </ScrollView>
   );
@@ -219,6 +317,21 @@ const styles = StyleSheet.create({
   deleteButton: { flex: 1, padding: 9, backgroundColor: '#FDECEC', borderRadius: 7, marginLeft: 7 },
   deleteText: { textAlign: 'center', color: Colour.error, fontWeight: '700' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 20 },
-  modal: { backgroundColor: '#FFF', borderRadius: 14, padding: 20, maxHeight: '92%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colour.primary, marginBottom: 16 }
+  modal: { backgroundColor: '#FFF', borderRadius: 14, maxHeight: '88%', width: '100%' },
+  modalScrollContent: { padding: 20, paddingBottom: 28 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colour.primary, marginBottom: 16 },
+  photoLabel: { fontWeight: 'bold', color: Colour.text, fontSize: 14, marginBottom: 8, marginTop: 8 },
+  photoPreview: { width: '100%', height: 150, borderRadius: 10, backgroundColor: '#E6E9EC', marginBottom: 10 },
+  photoPlaceholder: { height: 80, borderRadius: 10, backgroundColor: '#EDF1F4', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  photoPlaceholderText: { color: '#6D7780' },
+  cameraContainer: { flex: 1, backgroundColor: '#000' },
+  camera: { flex: 1 },
+  cameraHeader: { position: 'absolute', top: 50, left: 20 },
+  closeCamera: { backgroundColor: 'rgba(0,0,0,0.65)', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20 },
+  cameraActionText: { color: '#FFF', fontWeight: 'bold' },
+  cameraFooter: { position: 'absolute', bottom: 38, left: 0, right: 0, alignItems: 'center' },
+  cameraHint: { color: '#FFF', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 18 },
+  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 5, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#FFF' },
+  shutterDisabled: { opacity: 0.5 }
 });

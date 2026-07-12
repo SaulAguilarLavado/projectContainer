@@ -63,7 +63,7 @@ export default function AdminHomeScreen({ navigation }) {
   const handleRepairPress = async (repair) => {
     // Guardar reparación seleccionada en AsyncStorage
     await AsyncStorage.setItem('selectedRepair', JSON.stringify(repair));
-    console.log('Reparación seleccionada:', repair);
+    logger.info('repair_selected', { repairId: repair.id });
   };
 
   if (loading && repairs.length === 0) {

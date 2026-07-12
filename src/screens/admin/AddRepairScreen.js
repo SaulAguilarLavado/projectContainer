@@ -4,6 +4,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +12,7 @@ import {
   View
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Colour from '../../constants/Colour';
 import CustomInput from '../../components/CustomInput';
@@ -36,6 +38,7 @@ export default function AddRepairScreen({ navigation }) {
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [takingPhoto, setTakingPhoto] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
   const [screenError, setScreenError] = useState('');
@@ -247,14 +250,31 @@ export default function AddRepairScreen({ navigation }) {
         keyboardType="decimal-pad"
         error={errors.costo}
       />
-      <CustomInput
-        label="Fecha de entrega"
-        placeholder="2026-07-15"
-        value={fechaEntrega}
-        onChangeText={setFechaEntrega}
-        error={errors.fechaEntrega}
-        maxLength={10}
-      />
+      <Text style={styles.label}>Fecha de entrega</Text>
+      <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+        <Text style={[styles.dateButtonText, !fechaEntrega && styles.datePlaceholder]}>
+          {fechaEntrega || 'Seleccionar fecha'}
+        </Text>
+      </TouchableOpacity>
+      {!!errors.fechaEntrega && <Text style={styles.validationText}>{errors.fechaEntrega}</Text>}
+      {showDatePicker && (
+        <DateTimePicker
+          value={fechaEntrega ? new Date(fechaEntrega + 'T12:00:00') : new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()}
+          onChange={(_event, selectedDate) => {
+            setShowDatePicker(Platform.OS === 'ios');
+            if (selectedDate) {
+              const yyyy = selectedDate.getFullYear();
+              const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+              const dd = String(selectedDate.getDate()).padStart(2, '0');
+              setFechaEntrega(`${yyyy}-${mm}-${dd}`);
+              setErrors(current => ({ ...current, fechaEntrega: null }));
+            }
+          }}
+        />
+      )}
       <CustomInput
         label="Ubicación en almacén (1-3 letras)"
         placeholder="A"
@@ -347,5 +367,20 @@ const styles = StyleSheet.create({
   cameraHint: { color: '#FFF', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 18 },
   shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 5, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#FFF' },
-  shutterDisabled: { opacity: 0.5 }
+  shutterDisabled: { opacity: 0.5 },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#C9D1D9',
+    borderRadius: 10,
+    padding: 14,
+    backgroundColor: '#FFF',
+    marginBottom: 16
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: Colour.text
+  },
+  datePlaceholder: {
+    color: '#999'
+  }
 });

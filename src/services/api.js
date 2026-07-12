@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
   USUARIOS: '/usuarios',
   REPAIRS: '/reparaciones',
   PRODUCTS: '/productos',
+  PURCHASES: '/compras',
   HEALTH: '/health'
 };
 
@@ -102,17 +103,35 @@ const mapRepair = repair => ({
   date: repair.fecha_entrega,
   cost: repair.costo,
   location: repair.ubicacion,
-  photoUrl: repair.foto_url,
+  photoUrl: toAbsoluteMediaUrl(repair.foto_url),
   createdAt: repair.creado_en,
   updatedAt: repair.actualizado_en
 });
+
+const toAbsoluteMediaUrl = url => {
+  if (!url) return url;
+  if (/^(https?:|file:|content:)/.test(url)) return url;
+  return url.startsWith('/') ? `${BASE_URL}${url}` : url;
+};
 
 const mapProduct = product => ({
   id: product.id,
   name: product.nombre,
   price: product.precio,
   stock: product.stock,
-  description: product.descripcion
+  description: product.descripcion,
+  photoUrl: toAbsoluteMediaUrl(product.foto_url)
+});
+
+const mapPurchase = purchase => ({
+  id: purchase.id,
+  productId: purchase.producto_id,
+  product: purchase.producto,
+  clientId: purchase.cliente_id,
+  quantity: purchase.cantidad,
+  unitPrice: purchase.precio_unitario,
+  total: purchase.total,
+  createdAt: purchase.creado_en
 });
 
 export const loginUsuario = async (username, password) => {
@@ -183,29 +202,45 @@ export const getProducts = async () => {
 };
 
 export const createProduct = async product => {
+  const form = new FormData();
+  form.append('nombre', product.name.trim());
+  form.append('precio', String(Number(product.price)));
+  form.append('stock', String(Number(product.stock)));
+  form.append('descripcion', product.description.trim());
+
+  if (product.photoUri) {
+    const rawName = product.photoUri.split('/').pop() || `producto-${Date.now()}.jpg`;
+    const extension = rawName.split('.').pop()?.toLowerCase();
+    const type = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    form.append('foto', { uri: product.photoUri, name: rawName, type });
+  }
+
   const data = await request(API_ENDPOINTS.PRODUCTS, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      nombre: product.name.trim(),
-      precio: Number(product.price),
-      stock: Number(product.stock),
-      descripcion: product.description.trim()
-    })
+    body: form,
+    timeout: 20000
   });
   return mapProduct(data);
 };
 
 export const updateProduct = async (productId, product) => {
+  const form = new FormData();
+  form.append('nombre', product.name.trim());
+  form.append('precio', String(Number(product.price)));
+  form.append('stock', String(Number(product.stock)));
+  form.append('descripcion', product.description.trim());
+
+  if (product.photoUri) {
+    const rawName = product.photoUri.split('/').pop() || `producto-${Date.now()}.jpg`;
+    const extension = rawName.split('.').pop()?.toLowerCase();
+    const type = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    form.append('foto', { uri: product.photoUri, name: rawName, type });
+  }
+
   const data = await request(`${API_ENDPOINTS.PRODUCTS}/${productId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      nombre: product.name.trim(),
-      precio: Number(product.price),
-      stock: Number(product.stock),
-      descripcion: product.description.trim()
-    })
+    body: form,
+    timeout: 20000
   });
   return mapProduct(data);
 };
@@ -213,6 +248,21 @@ export const updateProduct = async (productId, product) => {
 export const deleteProduct = productId => request(`${API_ENDPOINTS.PRODUCTS}/${productId}`, {
   method: 'DELETE'
 });
+
+export const buyProduct = async (productId, clientId, quantity) => {
+  const data = await request(`${API_ENDPOINTS.PRODUCTS}/${productId}/comprar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cliente_id: clientId, cantidad: quantity })
+  });
+  return mapPurchase(data);
+};
+
+export const getPurchases = async clientId => {
+  const query = clientId ? `?cliente_id=${encodeURIComponent(clientId)}` : '';
+  const data = await request(`${API_ENDPOINTS.PURCHASES}${query}`);
+  return data.map(mapPurchase);
+};
 
 export const getUsuarios = async () => {
   const data = await request(API_ENDPOINTS.USUARIOS);
